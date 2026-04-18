@@ -1,19 +1,11 @@
 import express from "express";
-import path from "path";
 import multer from "multer";
 import Challenge from "../models/Challenge.js";
 import Group from "../models/Group.js";
 import Post from "../models/Post.js";
+import { getEncryptedMediaAccess, uploadEncryptedMedia } from "../services/objectStorage.js";
 
-const storage = multer.diskStorage({
-  destination: "uploads/",
-  filename: (_req, file, cb) => {
-    const safe = `${Date.now()}-${file.originalname.replace(/\s+/g, "-")}`;
-    cb(null, safe);
-  },
-});
-
-const upload = multer({ storage });
+const upload = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
 
@@ -44,12 +36,20 @@ router.post(
       return res.status(400).json({ error: "Photo is required" });
     }
 
+    const stored = await uploadEncryptedMedia({
+      groupId,
+      challengeId,
+      bytes: req.file.buffer,
+    });
+
     const post = await Post.create({
       groupId,
       challengeId,
       author: { userId: req.user.userId, displayName: req.user.displayName },
-      mediaUrl: `/uploads/${path.basename(req.file.path)}`,
-      mediaMimeType: req.file.mimetype,
+      mediaObjectKey: stored.objectKey,
+      mediaProvider: stored.provider,
+      mediaBucket: stored.bucket,
+      mediaMimeType: req.body.originalMimeType || req.file.mimetype,
       mediaCipherMeta: {
         iv: req.body.mediaIv,
         keyVersion: Number(req.body.keyVersion || 1),
@@ -64,6 +64,33 @@ router.post(
     res.status(201).json(post);
   }
 );
+
+router.get("/posts/:id/media-access", async (req, res) => {
+  const post = await Post.findById(req.params.id);
+
+  if (!post) {
+    return res.status(404).json({ error: "Post not found" });
+  }
+
+  const group = await Group.findById(post.groupId);
+  const isMember = group?.members.some((member) => member.userId === req.user.userId);
+
+  if (!group || group.isDeleted || !isMember) {
+    return res.status(403).json({ error: "Not allowed" });
+  }
+
+  const access = await getEncryptedMediaAccess({
+    objectKey: post.mediaObjectKey,
+    provider: post.mediaProvider,
+    bucket: post.mediaBucket,
+  });
+
+  if (!access) {
+    return res.status(404).json({ error: "Encrypted media not found" });
+  }
+
+  return res.json(access);
+});
 
 router.post("/posts/:id/likes", async (req, res) => {
   const post = await Post.findById(req.params.id);

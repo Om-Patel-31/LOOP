@@ -21,7 +21,9 @@ const postSchema = new mongoose.Schema(
       userId: { type: String, required: true },
       displayName: { type: String, required: true },
     },
-    mediaUrl: { type: String, required: true },
+    mediaObjectKey: { type: String, required: true },
+    mediaProvider: { type: String, required: true, enum: ["s3", "gcs", "memory"] },
+    mediaBucket: { type: String, required: true },
     mediaMimeType: { type: String, required: true },
     mediaCipherMeta: {
       iv: { type: String },
@@ -32,7 +34,7 @@ const postSchema = new mongoose.Schema(
     caption: { type: String },
     captionCipherText: { type: String },
     captionIv: { type: String },
-    likes: [{ type: String }],
+    likes: { type: [String], default: [] },
     comments: [commentSchema],
   },
   { timestamps: true }

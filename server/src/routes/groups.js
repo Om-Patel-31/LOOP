@@ -13,7 +13,7 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-  const { name, challengeMode = "daily" } = req.body;
+  const { name, challengeMode = "daily", initialKeyEnvelope } = req.body;
 
   if (!name?.trim()) {
     return res.status(400).json({ error: "Group name is required" });
@@ -23,6 +23,15 @@ router.post("/", async (req, res) => {
     name: name.trim(),
     challengeMode,
     inviteCode: generateInviteCode(),
+    keyEnvelopes: initialKeyEnvelope
+      ? [
+          {
+            userId: req.user.userId,
+            encryptedGroupKey: initialKeyEnvelope.encryptedGroupKey,
+            keyVersion: Number(initialKeyEnvelope.keyVersion || 1),
+          },
+        ]
+      : [],
     members: [
       {
         userId: req.user.userId,
@@ -99,6 +108,36 @@ router.post("/:id/leave", (_req, res) => {
   res.status(405).json({
     error: "Users cannot leave groups. Delete the group instead.",
   });
+});
+
+router.get("/:id/key-envelope", requireGroupMembership, async (req, res) => {
+  const envelope = req.group.keyEnvelopes.find((item) => item.userId === req.user.userId);
+
+  if (!envelope) {
+    return res.status(404).json({ error: "No key envelope available for this user" });
+  }
+
+  res.json(envelope);
+});
+
+router.post("/:id/key-envelopes", requireGroupMembership, async (req, res) => {
+  const { userId, encryptedGroupKey, keyVersion = 1 } = req.body;
+
+  if (!userId || !encryptedGroupKey) {
+    return res.status(400).json({ error: "userId and encryptedGroupKey are required" });
+  }
+
+  const targetIsMember = req.group.members.some((member) => member.userId === userId);
+
+  if (!targetIsMember) {
+    return res.status(404).json({ error: "Target user is not a group member" });
+  }
+
+  req.group.keyEnvelopes = req.group.keyEnvelopes.filter((item) => item.userId !== userId);
+  req.group.keyEnvelopes.push({ userId, encryptedGroupKey, keyVersion: Number(keyVersion) });
+  await req.group.save();
+
+  res.status(201).json({ userId, keyVersion: Number(keyVersion) });
 });
 
 router.delete("/:id/members/:memberId", (_req, res) => {

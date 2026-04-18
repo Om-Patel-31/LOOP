@@ -14,12 +14,23 @@ const memberSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const keyEnvelopeSchema = new mongoose.Schema(
+  {
+    userId: { type: String, required: true },
+    encryptedGroupKey: { type: String, required: true },
+    keyVersion: { type: Number, default: 1 },
+    createdAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const groupSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     inviteCode: { type: String, required: true, unique: true, index: true },
     challengeMode: { type: String, enum: ["daily", "custom"], default: "daily" },
     members: [memberSchema],
+    keyEnvelopes: { type: [keyEnvelopeSchema], default: [] },
     isDeleted: { type: Boolean, default: false },
     deletedAt: { type: Date },
   },
