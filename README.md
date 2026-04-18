@@ -125,3 +125,37 @@ Creates:
 ## Notes on Async Interaction
 
 Posts, likes, and comments are designed for asynchronous use across time zones and are shown in chronological feed order.
+
+## Deploy Frontend To GitHub Pages
+
+GitHub Pages can host only the frontend (`client`).
+The backend (`server`) must be deployed separately (for example Render, Railway, Fly.io, or a VPS).
+
+### 1) Push the repository to GitHub
+
+This repo includes [deploy-pages.yml](.github/workflows/deploy-pages.yml), which builds and deploys `client/dist` to the `gh-pages` branch on each push to `main`.
+
+### 2) Add backend URL secret
+
+In GitHub repository settings:
+
+- Go to `Settings` -> `Secrets and variables` -> `Actions`
+- Add a repository secret named `VITE_API_URL`
+- Set it to your deployed backend API base URL, e.g. `https://your-backend.example.com/api`
+
+### 3) Enable Pages
+
+In GitHub repository settings:
+
+- Go to `Settings` -> `Pages`
+- Source: `Deploy from a branch`
+- Branch: `gh-pages` and folder `/ (root)`
+
+### 4) Trigger deployment
+
+Push to `main` (or run the workflow manually under `Actions`).
+
+The workflow auto-detects base path:
+
+- User/org pages (`<user>.github.io`): `/`
+- Project pages: `/<repo>/`
