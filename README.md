@@ -159,3 +159,34 @@ The workflow auto-detects base path:
 
 - User/org pages (`<user>.github.io`): `/`
 - Project pages: `/<repo>/`
+
+## Deploy Backend To Render
+
+This repo includes [render.yaml](render.yaml) for one-click backend provisioning.
+
+### 1) Create Render Web Service
+
+- Open Render dashboard and choose `New` -> `Blueprint`
+- Connect this GitHub repo
+- Render detects [render.yaml](render.yaml) and creates `loop-api`
+
+### 2) Set required environment variables in Render
+
+- `MONGO_URI`: your MongoDB connection string (Atlas recommended)
+- `APP_ORIGIN`: your frontend origin
+	- User page example: `https://your-user.github.io`
+	- Project page example: `https://your-user.github.io/your-repo`
+
+You can set multiple allowed origins by comma-separating values in `APP_ORIGIN`.
+
+### 3) Deploy and verify
+
+- Deploy service
+- Open `https://<your-render-service>.onrender.com/api/health`
+- Expect: `{ "ok": true, "service": "loop-api" }`
+
+### 4) Wire frontend to Render backend
+
+- In GitHub repo `Settings` -> `Secrets and variables` -> `Actions`
+- Set `VITE_API_URL` to `https://<your-render-service>.onrender.com/api`
+- Re-run GitHub Pages workflow (or push to `main`)

@@ -31,10 +31,11 @@ function sanitizeAuthKeyBundle(bundle) {
 }
 
 function setAuthCookies(res, accessToken, refreshToken) {
+  const isProduction = process.env.NODE_ENV === "production";
   const baseCookie = {
     httpOnly: true,
-    sameSite: "lax",
-    secure: false,
+    sameSite: isProduction ? "none" : "lax",
+    secure: isProduction,
     path: "/",
   };
 
